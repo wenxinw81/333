@@ -1,0 +1,50 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Syntax check
+        run: |
+          python -m py_compile work\htri_export_gui.py work\htri_export_pipeline.py
+
+      - name: Build executable
+        run: python -m PyInstaller --name HTRI_XML_Exporter --windowed --onedir --add-data "work;work" work\htri_export_gui.py
+
+      - name: Copy README
+        run: Copy-Item README_GUI.md dist\HTRI_XML_Exporter\README_GUI.md
+
+      - name: Verify bundled work files
+        run: |
+          if (Test-Path dist\HTRI_XML_Exporter\_internal\work\extract_hcurve_ascii.py) {
+            Write-Host "Found bundled work files under _internal\work"
+          } elseif (Test-Path dist\HTRI_XML_Exporter\work\extract_hcurve_ascii.py) {
+            Write-Host "Found bundled work files under work"
+          } else {
+            Write-Error "Bundled work files are missing"
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTRI_XML_Exporter_windows
+          path: dist\HTRI_XML_Exporter
